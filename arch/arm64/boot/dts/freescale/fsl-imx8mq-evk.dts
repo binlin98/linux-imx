@@ -26,10 +26,16 @@
 		bcmdhd_nv = "/lib/firmware/bcm/1CX_BCM4356/bcmdhd.cal";
 	};
 
+	#if 0
 	chosen {
-		bootargs = "console=ttymxc0,115200 earlycon=ec_imx6q,0x30860000,115200";
-		stdout-path = &uart1;
+		bootargs = "console=ttymxc1,115200 earlycon=ec_imx6q,0x30860000,115200";
+		stdout-path = &uart2;
 	};
+	#endif
+	chosen {
+		bootargs = "console=ttymxc1,115200 earlycon=ec_imx6q,0x30890000,115200";
+		stdout-path = &uart2;
+	};	
 
 	regulators {
 		compatible = "simple-bus";
@@ -45,6 +51,16 @@
 			enable-active-high;
 		};
 
+        reg_cs47l24: regulator-cs47l24 {
+            compatible = "regulator-fixed";
+            regulator-name = "cs47l24-supply";
+            regulator-min-microvolt = <3300000>;
+            regulator-max-microvolt = <3300000>;
+            gpio = <&gpio4 12 GPIO_ACTIVE_HIGH>;
+            regulator-always-on;
+            enable-active-high;
+        };
+		
 		reg_gpio_dvfs: regulator-gpio {
 			compatible = "regulator-gpio";
 			pinctrl-names = "default";
@@ -66,6 +82,7 @@
 		#reset-cells = <0>;
 	};
 
+	#if 0
 	wm8524: wm8524 {
 		compatible = "wlf,wm8524";
 		clocks = <&clk IMX8MQ_CLK_SAI2_ROOT>;
@@ -82,7 +99,28 @@
 			"Line Out Jack", "LINEVOUTL",
 			"Line Out Jack", "LINEVOUTR";
 	};
+	#endif
 
+	#if 1
+	//add cs47l24
+	cs47l24: cs47l24 {
+		compatible = "cirrus,cs47l24";
+		clocks = <&clk IMX8MQ_CLK_SAI2_ROOT>;
+		clock-names = "mclk";
+		wlf,mute-gpios = <&gpio1 8 GPIO_ACTIVE_LOW>;
+	};
+
+	sound-cs47l24 {
+		compatible = "fsl,imx-audio-cs47l24";
+		model = "cs47l24-audio";
+		audio-cpu = <&sai2>;
+		audio-codec = <&cs47l24>;
+		audio-routing =
+			"Line Out Jack", "LINEVOUTL",
+			"Line Out Jack", "LINEVOUTR";
+	};	
+	#endif
+	
 	sound-hdmi {
 		compatible = "fsl,imx-audio-cdnhdmi";
 		model = "imx-audio-hdmi";
@@ -237,6 +275,26 @@
 			>;
 		};
 
+		pinctrl_ecspi3: ecspi3grp-1 {
+			fsl,pins = <
+				//MX8MQ_IOMUXC_UART1_RXD_ECSPI3_SCLK		0x11
+				//MX8MQ_IOMUXC_UART1_TXD_ECSPI3_MOSI		0x11
+				//MX8MQ_IOMUXC_UART2_RXD_ECSPI3_MISO		0x11
+				//MX8MQ_IOMUXC_UART2_TXD_ECSPI3_SS0	    0x11
+				//MX8MQ_IOMUXC_UART2_TXD_GPIO5_IO25		0x11
+			>;
+		};
+
+		pinctrl_ecspi1: ecspi1grp {
+			fsl,pins = <
+				MX8MQ_IOMUXC_ECSPI1_SCLK_ECSPI1_SCLK		0x11
+				MX8MQ_IOMUXC_ECSPI1_MOSI_ECSPI1_MOSI		0x11
+				MX8MQ_IOMUXC_ECSPI1_MISO_ECSPI1_MISO		0x11
+				MX8MQ_IOMUXC_ECSPI1_SS0_GPIO5_IO9	        0x11
+				MX8MQ_IOMUXC_GPIO1_IO12_GPIO1_IO12	        0x11
+			>;
+		};
+		
 		pinctrl_typec: typecgrp {
 			fsl,pins = <
 				MX8MQ_IOMUXC_NAND_RE_B_GPIO3_IO15	0x16
@@ -251,13 +309,20 @@
 			>;
 		};
 
+		pinctrl_uart2: uart2grp {
+			fsl,pins = <
+				MX8MQ_IOMUXC_UART2_RXD_UART2_DCE_RX		0x49
+				MX8MQ_IOMUXC_UART2_TXD_UART2_DCE_TX		0x49
+			>;
+		};
+		
 		pinctrl_uart3: uart3grp {
 			fsl,pins = <
 				MX8MQ_IOMUXC_UART3_TXD_UART3_DCE_TX		0x49
 				MX8MQ_IOMUXC_UART3_RXD_UART3_DCE_RX		0x49
-				MX8MQ_IOMUXC_ECSPI1_MISO_UART3_DCE_CTS_B	0x49
-				MX8MQ_IOMUXC_ECSPI1_SS0_UART3_DCE_RTS_B		0x49
-				MX8MQ_IOMUXC_NAND_CLE_GPIO3_IO5			0x19
+				//MX8MQ_IOMUXC_ECSPI1_MISO_UART3_DCE_CTS_B	0x49
+				//MX8MQ_IOMUXC_ECSPI1_SS0_UART3_DCE_RTS_B		0x49
+				//MX8MQ_IOMUXC_NAND_CLE_GPIO3_IO5			0x19
 			>;
 		};
 
@@ -652,6 +717,15 @@
 	status = "okay";
 };
 
+&uart2 { /* habey console */
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_uart2>;
+	assigned-clocks = <&clk IMX8MQ_CLK_UART2_SRC>;
+	assigned-clock-parents = <&clk IMX8MQ_CLK_25M>;
+	status = "okay";
+};
+
+#if 0
 &qspi {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_qspi>;
@@ -666,14 +740,72 @@
 		spi-nor,ddr-quad-read-dummy = <6>;
 	};
 };
+#endif
 
+//test cspi
+#if 0
+&ecspi1 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	num-cs = <1>;
+ 	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_ecspi1>;
+	status = "okay";
+        cs-gpios = <&gpio1 12 0>;
+
+        spidev@0 {
+               compatible = "spidev";
+               spi-max-frequency = <12000000>;
+               reg = <0>;
+        };
+};
+#endif
+
+#if 0
+&ecspi3 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	num-cs = <1>;
+ 	pinctrl-names = "default";
+	//pinctrl-0 = <&pinctrl_ecspi3>;
+	status = "okay";
+    cs-gpios = <&gpio5 25 0>;
+
+	#if 0
+    spidev@0 {
+		compatible = "spidev";
+		spi-max-frequency = <12000000>;
+		reg = <0>;
+	};
+	#endif
+	
+	cs47l24@0 {
+		compatible = "cirrus,cs47l24";
+		spi-max-frequency = <12000000>;
+		reg = <0>;	
+
+		interrupts = <3 8>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
+		interrupt-parent = <&gpio3>;
+
+		#gpio-controller;
+		#gpio-cells = <2>;
+
+		DCVDD-supply = <&reg_cs47l24>;
+		MICVDD-supply = <&reg_cs47l24>;	
+	};
+};
+#endif
+
+//test console
 &uart3 { /* BT */
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_uart3>;
 	assigned-clocks = <&clk IMX8MQ_CLK_UART3_SRC>;
 	assigned-clock-parents = <&clk IMX8MQ_SYS1_PLL_80M>;
-	fsl,uart-has-rtscts;
-	resets = <&modem_reset>;
+	//fsl,uart-has-rtscts;
+	//resets = <&modem_reset>;
 	status = "okay";
 };
 
